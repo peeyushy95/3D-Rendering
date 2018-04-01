@@ -1,5 +1,5 @@
 var cube = ( ()=>{
-    "use strict";
+    //"use strict";
 
     var scene = new THREE.Scene(),
     renderer = window.WebGLRenderingContext ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer(),
@@ -25,8 +25,11 @@ var cube = ( ()=>{
         var geometry = new THREE.BoxGeometry( 20, 20, 20 );
         var material = new THREE.MeshBasicMaterial( {color: 0xff0000} );
         cube = new THREE.Mesh( geometry, material );
-        scene.add( cube );
+        scene.add(cube);
 
+        stats = new Stats();
+        stats.showPanel( 1 );
+        document.body.appendChild( stats.dom );
         render();
     }
 
@@ -36,6 +39,7 @@ var cube = ( ()=>{
         cube.rotation.x +=0.02;
         renderer.render(scene, camera);
         requestAnimationFrame(render);
+        stats.update();
     }
 
     window.onload = initScene;
