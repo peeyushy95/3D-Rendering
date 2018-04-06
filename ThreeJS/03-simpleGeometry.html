@@ -7,9 +7,9 @@
 </head>
 <body>
     <div id="my-webgl">
-    <script src="three.min.js"></script>
-    <script src="stats.js"></script>
-    <script src="dat.gui.js"></script>
+    <script src="libs/three.min.js"></script>
+    <script src="libs/stats.js"></script>
+    <script src="libs/dat.gui.js"></script>
 </div>
 
 <script>
@@ -28,7 +28,7 @@
 
         renderer.setClearColor(new THREE.Color(0xEEEEEE));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMapEnabled = true;
+        renderer.shadowMap.enabled = true;
 
         // create the ground plane
         var planeGeometry = new THREE.PlaneGeometry(60, 20, 1, 1);
@@ -47,7 +47,7 @@
 
         // create a cube
         var cubeGeometry = new THREE.BoxGeometry(4, 4, 4);
-        var cubeMaterial = new THREE.MeshLambertMaterial({color: 0xAAAAAA});
+        var cubeMaterial = new THREE.MeshLambertMaterial({color: 0xff0000});
         cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
         cube.castShadow = true;
 
@@ -78,16 +78,42 @@
         camera.position.z = 30;
         camera.lookAt(scene.position);
 
-        var ambientLight = new THREE.AmbientLight(0x0c0c0c);
+        var ambientLight = new THREE.AmbientLight(0x1c1c1c);
         scene.add(ambientLight);
 
+        // add spotlight for a bit of light
+        // var spotLight0 = new THREE.SpotLight(0xcccccc);
+        // spotLight0.position.set(-40, 30, -10);
+        // spotLight0.lookAt(plane);
+        // scene.add(spotLight0);
+
+
         // add spotlight
-        var spotLight = new THREE.SpotLight(0xffffff);
-        spotLight.position.set(-40, 60, -10);
-        spotLight.castShadow = true;
-        spotLight.shadowMapWidth = 2048;
-        spotLight.shadowMapHeight = 2048;
-        scene.add(spotLight);
+        // spotLight = new THREE.SpotLight(0xffffff);
+        // spotLight.position.set(-40, 60, -10);
+        // spotLight.castShadow = true;
+        // spotLight.shadow.camera.near = 2;
+        // spotLight.shadow.camera.far = 200;
+        // spotLight.shadow.camera.fov = 30;
+        // spotLight.target = plane;
+        // spotLight.distance = 100;
+        // spotLight.angle = 0.4;
+
+
+        var pointColor = "#ccffcc";
+        pointLight = new THREE.PointLight(pointColor);
+        pointLight.distance = 100;
+        pointLight.intensity = 3;
+        scene.add(pointLight);
+
+        // add a small sphere simulating the pointlight
+        var sphereLight = new THREE.SphereGeometry(0.2);
+        var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xac6c25});
+        sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
+        sphereLightMesh.castShadow = true;
+
+        sphereLightMesh.position = new THREE.Vector3(3, 0, 3);
+        scene.add(sphereLightMesh);
 
         // add the output of the renderer to the html element
         document.getElementById("my-webgl").appendChild(renderer.domElement);
@@ -97,6 +123,7 @@
 
         // call the render function
         step = 0;
+        phase = 0;
         
         stats = new Stats();
         stats.showPanel( 1 );
@@ -111,11 +138,13 @@
         controls = new function () {
             this.rotationSpeed = 0.02;
             this.bouncingSpeed = 0.03;
+            this.lightRotSpeed = 0.001;
         };
         
         gui = new dat.GUI();
         gui.add(controls, 'rotationSpeed', 0, 0.5);
         gui.add(controls, 'bouncingSpeed', 0, 0.5);
+        gui.add(controls, 'lightRotSpeed', -.04, 0.5);
     }
 
     function renderScene() {
@@ -129,6 +158,17 @@
             step += controls.bouncingSpeed;
             sphere.position.x = 15 + ( 10 * (Math.cos(step)));
             sphere.position.y = 2 + ( 10 * Math.abs(Math.sin(step)));
+
+            phase += .04 + controls.lightRotSpeed;
+            sphereLightMesh.position.z = 13 * (Math.sin(phase));
+            sphereLightMesh.position.x = 13 * (Math.cos(phase));
+            sphereLightMesh.position.y = 8;
+
+            pointLight.position.copy(sphereLightMesh.position);
+
+            camera.position.x = 80 * Math.cos(phase/4);
+            camera.position.z = 80 * Math.sin(phase/4);
+            camera.lookAt(scene.position);
 
             // render using requestAnimationFrame
             requestAnimationFrame(renderScene);
