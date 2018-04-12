@@ -17,7 +17,9 @@
 
     var mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
     var man, orbitControls, clock;
-    var floorSize = 1000, wallHeight = 150, cameraView = 8000, texturesLoaded = [];
+    var floorSize = 1000, wallHeight = 150, cameraView = 8000;
+    var texturesLoaded = [], objectsLoaded = [];
+
     var grp1 = new THREE.Mesh();
     var objects = [];
 
@@ -103,8 +105,54 @@
         var axes = new THREE.AxesHelper(500);
         scene.add(axes);
     }
+
+    function gridHelper(){
+        var gridHelper = new THREE.GridHelper( 400, 15 );
+        gridHelper.position.set(0,1,0);
+        //scene.add( gridHelper );
+    }
+
+    function loadObject(id){
+        return objectsLoaded.filter((entry) => entry.id === id)[0].object;
+    }
+
+    function loadObjectPromise(objPath, id){
+        var promise = new Promise(function(resolve, reject){
+            var loader = new THREE.OBJLoader();
+            loader.load(objPath, function (loadedMesh) {
+                objectsLoaded.push(
+                    {
+                        object : loadedMesh,
+                        id : id
+                    });
+                resolve();
+            });
+        });
+        return promise;
+    }
+
+    function loadTexture(id) {
+        return texturesLoaded.filter((entry) => entry.id === id)[0].texture;
+    }
+
+    function loadTexturePromise(imageFile, id) {
+        var promise = new Promise(function(resolve, reject) {
+            new THREE.TextureLoader()
+                .load(imageFile , (texture) =>{
+                    texturesLoaded.push(
+                    {
+                        texture: texture,
+                        id: id
+                    });
+                    resolve();
+                });
+        });
+        return promise;
+    }
     
     function constructWalls(){
+
+        var wallMesh = [];
 
         // for hiding object in front of camera
         var onBeforeRender = function() {
@@ -122,13 +170,13 @@
 
         var geometry = new THREE.BoxGeometry( floorSize, wallHeight, 0.25 );
 
-        var texture = loadTexture('images/stone-bump.jpg');
+        var texture = loadTexture('wall');
         var mat1 = new THREE.MeshPhongMaterial(
-                {
-                    color: 0xeeeeee,
-                    specular: 0x050505,
-                    shininess: 100
-                });
+                        {
+                            color: 0xeeeeee,
+                            specular: 0x050505,
+                            shininess: 100
+                        });
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
 
@@ -148,6 +196,7 @@
         //mesh.onAfterRender = onAfterRender;
         scene.add( mesh );
         mesh.geometry.computeVertexNormals();
+        wallMesh.push(mesh);
 
 
        mesh = new THREE.Mesh( geometry, material );
@@ -158,9 +207,9 @@
        // mesh.onAfterRender = onAfterRender;
        mesh.geometry.computeVertexNormals();
        scene.add( mesh );
+       wallMesh.push(mesh);
 
-       // mesh
-       mesh = new THREE.Mesh( geometry, material );
+        mesh = new THREE.Mesh( geometry, material );
        mesh.position.set( floorSize/2, wallHeight/2, 0 );
        mesh.rotation.set( 0, - Math.PI / 2, 0 );
        mesh.userData.normal = mesh.position.clone().normalize();
@@ -168,6 +217,7 @@
        // mesh.onBeforeRender = onBeforeRender;
        // mesh.onAfterRender = onAfterRender;
        scene.add( mesh );
+       wallMesh.push(mesh);
 
        // mesh
        mesh = new THREE.Mesh( geometry, material );
@@ -177,28 +227,27 @@
        // mesh.onBeforeRender = onBeforeRender;
        // mesh.onAfterRender = onAfterRender;
        scene.add( mesh );
+       wallMesh.push(mesh);
 
        // geometry
        var geometry = new THREE.BoxGeometry( floorSize, floorSize, 1 );
 
-        //test1.jpg
-        var texture = loadTexture('images/floortile4.jpg');
-        var mat = new THREE.MeshPhongMaterial({
+       var texture = loadTexture('floorTile');
+       var mat = new THREE.MeshPhongMaterial({
             color: 0xeeeeee,
             specular: 0x050505,
             shininess: 100});
-         texture.wrapS = THREE.RepeatWrapping;
-         texture.wrapT = THREE.RepeatWrapping;
+       texture.wrapS = THREE.RepeatWrapping;
+       texture.wrapT = THREE.RepeatWrapping;
 
         // geom.computeVertexNormals();
-        mat.map = texture;
-        mat.map.repeat.set(4,4);
+       mat.map = texture;
+       mat.map.repeat.set(4,4);
        // mesh - floor
-        floorMesh = new THREE.Mesh( geometry, mat );
-        floorMesh.position.set( 0, 0, 0 );
-        floorMesh.rotation.set( - Math.PI / 2, 0, 0 );
-        floorMesh.userData.normal = floorMesh.position.clone().normalize();
-        floorMesh.receiveShadow = true;
+       floorMesh = new THREE.Mesh( geometry, mat );
+       floorMesh.position.set( 0, 0, 0 );floorMesh.rotation.set( - Math.PI / 2, 0, 0 );
+       floorMesh.userData.normal = floorMesh.position.clone().normalize();
+       floorMesh.receiveShadow = true;
        // mesh.onBeforeRender = onBeforeRender;
        // mesh.onAfterRender = onAfterRender;
        scene.add( floorMesh );
@@ -249,56 +298,53 @@
     }
 
     function drawDoor(){
-        loader = new THREE.OBJLoader();
-        loader.load('Door/Door.obj', function (loadedMesh) {
-            var material = new THREE.MeshLambertMaterial({color: 0xEE0000});
+        var loadedMesh = loadObject('door');
+        var material = new THREE.MeshLambertMaterial({color: 0xEE0000});
 
-            // loadedMesh is a group of meshes. For
-            // each mesh set the material, and compute the information
-            // three.js needs for rendering.
-            loadedMesh.children.forEach(function (child) {
-                child.material = material;
-                child.geometry.computeFaceNormals();
-                child.geometry.computeVertexNormals();
-            });
-
-            mesh = loadedMesh.children[3];
-            mesh.position.set(-160,0,-200);
-            mesh.scale.set(.2, .2, .2);
-            mesh.name = '4';
-            //loadedMesh.rotation.x = -0.3;
-            scene.add(mesh);
-
-            mesh1 = loadedMesh.children[3];
-            mesh1.name = '5';
-            mesh1.position.set(-160,0,-199);
-            mesh1.scale.set(.2,.2,.2);
-            //loadedMesh.rotation.x = -0.3;
-            scene.add(mesh1);
+        // loadedMesh is a group of meshes. For
+        // each mesh set the material, and compute the information
+        // three.js needs for rendering.
+        loadedMesh.children.forEach(function (child) {
+            child.material = material;
+            child.geometry.computeFaceNormals();
+            child.geometry.computeVertexNormals();
         });
+
+        mesh = loadedMesh.children[3];
+        mesh.position.set(-160,0,-200);
+        mesh.scale.set(.2, .2, .2);
+        mesh.name = '4';
+        //loadedMesh.rotation.x = -0.3;
+        scene.add(mesh);
+
+        mesh1 = loadedMesh.children[3];
+        mesh1.name = '5';
+        mesh1.position.set(-160,0,-199);
+        mesh1.scale.set(.2,.2,.2);
+        //loadedMesh.rotation.x = -0.3;
+        scene.add(mesh1);
     }
 
     function drawMan(){
-        loader.load('man/stickman.OBJ', function (loadedMesh) {
-            var material = new THREE.MeshLambertMaterial({color: 0x00FF00});
+        var loadedMesh = loadObject('man');
+        var material = new THREE.MeshLambertMaterial({color: 0x00FF00});
 
-            // loadedMesh is a group of meshes. For
-            // each mesh set the material, and compute the information
-            // three.js needs for rendering.
-            loadedMesh.children.forEach(function (child) {
-                child.material = material;
-                // child.geometry.computeFaceNormals();
-                //  child.geometry.computeVertexNormals();
-            });
-            man = loadedMesh;
-            loadedMesh.position.set(-0,18,-80);
-           // loadedMesh.rotation.y = Math.PI/2;
-            loadedMesh.rotation.x = Math.PI/2;
-            //loadedMesh.rotation.z = Math.PI/2;
-            loadedMesh.scale.set(.5,.4, .5);
-            loadedMesh.material = material;
-            scene.add(loadedMesh);
+        // loadedMesh is a group of meshes. For
+        // each mesh set the material, and compute the information
+        // three.js needs for rendering.
+        loadedMesh.children.forEach(function (child) {
+            child.material = material;
+            // child.geometry.computeFaceNormals();
+            //  child.geometry.computeVertexNormals();
         });
+        man = loadedMesh;
+        loadedMesh.position.set(-0,18,-80);
+       // loadedMesh.rotation.y = Math.PI/2;
+        loadedMesh.rotation.x = Math.PI/2;
+        //loadedMesh.rotation.z = Math.PI/2;
+        loadedMesh.scale.set(.5,.4, .5);
+        loadedMesh.material = material;
+        scene.add(loadedMesh);
     }
 
     function createMesh(geom, imageFile) {
@@ -325,56 +371,42 @@
         return geom;
     }
 
-    function getShelfObj(callback){
-        var shelf =  THREE.Cache.get('shelf');
-
-        if(!shelf){
-            loader.load('2tier/Shelves.obj', function (loadedMesh) {
-                THREE.Cache.add('shelf', loadedMesh);
-                callback(loadedMesh);
-            });
-        } else{
-            callback(shelf);
-        }
-    }
-
     function draw2Tier(position, rotation){
-        getShelfObj(function (loadedMesh) {
-            var material = new THREE.MeshLambertMaterial({color: 0x0000FF});
+        var loadedMesh = loadObject('shelf').clone();
+        var material = new THREE.MeshLambertMaterial({color: 0x0000FF});
 
-            // loadedMesh is a group of meshes. For
-            // each mesh set the material, and compute the information
-            // three.js needs for rendering.
+        // loadedMesh is a group of meshes. For
+        // each mesh set the material, and compute the information
+        // three.js needs for rendering.
 
-            var mesh = createMesh(loadedMesh, 'images/wood.jpg');
-            // loadedMesh.children.forEach(function (child) {
-            //     child.material = material;
-            //     // child.geometry.computeFaceNormals();
-            //     //  child.geometry.computeVertexNormals();
-            // });
+        var mesh = createMesh(loadedMesh, 'aisle');
+        // loadedMesh.children.forEach(function (child) {
+        //     child.material = material;
+        //     // child.geometry.computeFaceNormals();
+        //     //  child.geometry.computeVertexNormals();
+        // });
 
 
-            mesh.position.set(position.x, position.y, position.z);
-            mesh.rotation.y = Math.PI/2;
-            //loadedMesh.rotation.x = Math.PI/2;
-            //loadedMesh.rotation.z = Math.PI/2;
-            mesh.scale.set(40, 20, 25);
-            //loadedMesh.material = material;
-            grp1.add(mesh);
-            //scene.add(mesh);
-        });
+        mesh.position.set(position.x, position.y, position.z);
+        mesh.rotation.y = Math.PI/2;
+        //loadedMesh.rotation.x = Math.PI/2;
+        //loadedMesh.rotation.z = Math.PI/2;
+        mesh.scale.set(40, 20, 25);
+        //loadedMesh.material = material;
+        grp1.add(mesh);
+        //scene.add(mesh);
+
     }
 
     function drawShelf(){
-        loader.load('shelf/shelf.obj', function (loadedMesh) {
-            var mesh = createMesh(loadedMesh, 'images/wood.jpg');
-            mesh.position.set(100,-5,-15);
-            mesh.rotation.y = -Math.PI/2;
-            //loadedMesh.rotation.z = Math.PI/2;
-            mesh.scale.set(2.5,.8,4);
-            //loadedMesh.material = material;
-            scene.add(mesh);
-        });
+        var loadedMesh = loadObject('shelf');
+        var mesh = createMesh(loadedMesh, 'aisle');
+        mesh.position.set(100,-5,-15);
+        mesh.rotation.y = -Math.PI/2;
+        //loadedMesh.rotation.z = Math.PI/2;
+        mesh.scale.set(2.5,.8,4);
+        //loadedMesh.material = material;
+        scene.add(mesh);
 
     }
 
@@ -400,31 +432,6 @@
         }
     }
 
-    function loadTexture(imageFile) {
-        //var promise1 = new Promise(function(resolve, reject) {
-            var texture;
-            var loaded = texturesLoaded.filter((entry) => entry.id === imageFile);
-            if (!loaded.length) {
-                texture = new THREE.TextureLoader().load(imageFile);
-                texturesLoaded.push(
-                    {
-                        texture: texture,
-                        id: imageFile
-                    });
-            } else {
-                texture = loaded[0].texture;
-                //texture.needsUpdate = true;
-            }
-            //console.log();
-        //}
-        return texture;
-    }
-
-    function loadObjects(){
-        initScene();
-    }
-
-    // once everything is loaded, we run our Three.js stuff.
     function initScene() {
 
         scene = new THREE.Scene();
@@ -453,6 +460,8 @@
         lightControls();
 
         axisHelper();
+
+        gridHelper();
 
         drawDoor();
 
@@ -497,12 +506,6 @@
         stats = new Stats();
         stats.showPanel( 1 );
         document.body.appendChild( stats.dom );
-
-        var gridHelper = new THREE.GridHelper( 400, 15 );
-        gridHelper.position.set(0,1,0);
-        //scene.add( gridHelper );
-
-
 
         var extrudeSettings = { amount: 18, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 1, bevelThickness: 1 };
 
@@ -677,6 +680,20 @@
         //     }
         //     render();
         // }
+    }
+
+    function loadObjects(){
+        Promise.all([
+                loadObjectPromise('2tier/Shelves.obj', 'shelf'),
+                loadObjectPromise('man/stickman.OBJ', 'man'),
+                loadObjectPromise('Door/Door.obj', 'door'),
+                loadTexturePromise('images/wall.jpg', 'wall'),
+                loadTexturePromise('images/wood.jpg', 'aisle'),
+                loadTexturePromise('images/floortile.jpg', 'floorTile')])
+            .then(
+                ()=> {
+                    initScene();
+                });
     }
 
     // listen to the resize events
