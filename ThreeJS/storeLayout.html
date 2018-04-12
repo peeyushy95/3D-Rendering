@@ -6,23 +6,20 @@
     <title> WebGL</title>
 </head>
 <body>
-
     <div id="my-webgl">
         <script src="libs/three.min.js"></script>
         <script src="libs/stats.js"></script>
         <script src="libs/dat.gui.js"></script>
         <script src="/libs/OrbitControls.js"></script>
         <script src="/libs/OBJLoader.js"></script>
-
     </div>
+    <script>
 
-<script>
-
-    var man;
-    var floorSize = 1000;
-    var wallHeight = 150;
-    var cameraView = 2000;
+    var mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
+    var man, orbitControls, clock;
+    var floorSize = 1000, wallHeight = 150, cameraView = 8000, texturesLoaded = [];
     var grp1 = new THREE.Mesh();
+    var objects = [];
 
     function orbitalControls(){
         orbitControls = new THREE.OrbitControls(camera);
@@ -32,10 +29,6 @@
     }
 
     function lightControls(){
-        //add spotlight for a bit of light
-
-
-
         // add spotlight
         // spotLight = new THREE.SpotLight(0xffffff);
         // spotLight.position.set(-40, 60, -10);
@@ -47,14 +40,11 @@
         // spotLight.distance = 100;
         // spotLight.angle = 0.4;
 
+        var ambientLight = new THREE.AmbientLight(0x888888);
+        scene.add(ambientLight);
 
         var pointColor = "#ffffff"; //ccffcc
-        // pointLight = new THREE.PointLight(pointColor);
-        // pointLight.distance = 100;
-        // pointLight.intensity = 3;
-        // scene.add(pointLight);
-
-        var x = floorSize/2 - 200, y = 80, z = floorSize/2 - 200, intensity = 2, distance = 200;
+        var x = floorSize/2 - 200, y = 80, z = floorSize/2 - 200, intensity = 2, distance = 400;
 
         var spotLight0 = new THREE.SpotLight(0xffffff);
         spotLight0.position.set(0,100,0);
@@ -64,7 +54,7 @@
         spotLight0.castShadow = true;
         scene.add(spotLight0);
 
-
+        //point Lights
         pointLight = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight.position.set( x, y, z );
         pointLight.castShadow = true;
@@ -90,6 +80,7 @@
         pointLight5.castShadow = true;
         scene.add( pointLight5 );
 
+
         // add a small sphere simulating the pointlight
         var sphereLight = new THREE.SphereGeometry(0.2);
         var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xac6c25});
@@ -98,29 +89,24 @@
 
         sphereLightMesh.position = new THREE.Vector3(3, 0, 3);
         scene.add(sphereLightMesh);
-
-        var ambientLight = new THREE.AmbientLight(0x888888);
-        scene.add(ambientLight);
-
     }
 
     function cameraControls(){
-
         // position and point the camera to the center of the scene
         camera.position.x = 280;
         camera.position.y = 350;
         camera.position.z = 650;
         camera.lookAt(scene.position);
-
     }
 
     function axisHelper(){
-        var axes = new THREE.AxisHelper(500);
+        var axes = new THREE.AxesHelper(500);
         scene.add(axes);
     }
-
+    
     function constructWalls(){
 
+        // for hiding object in front of camera
         var onBeforeRender = function() {
             var v = new THREE.Vector3();
             return function onBeforeRender( renderer, scene, camera, geometry, material, group ) {
@@ -130,17 +116,13 @@
                 }
             };
         }();
-
         var onAfterRender = function( renderer, scene, camera, geometry, material, group ) {
             geometry.setDrawRange( 0, Infinity );
         };
 
         var geometry = new THREE.BoxGeometry( floorSize, wallHeight, 0.25 );
 
-        // material
-
-        //learning-threejs/assets/textures/soil_specular.jpg
-        var texture = THREE.ImageUtils.loadTexture('learning-threejs/assets/textures/general/stone-bump.jpg');
+        var texture = loadTexture('images/stone-bump.jpg');
         var mat1 = new THREE.MeshPhongMaterial(
                 {
                     color: 0xeeeeee,
@@ -200,7 +182,7 @@
        var geometry = new THREE.BoxGeometry( floorSize, floorSize, 1 );
 
         //test1.jpg
-        var texture = THREE.ImageUtils.loadTexture('images/floortile4.jpg');
+        var texture = loadTexture('images/floortile4.jpg');
         var mat = new THREE.MeshPhongMaterial({
             color: 0xeeeeee,
             specular: 0x050505,
@@ -264,7 +246,6 @@
 
         // add the sphere to the scene
         scene.add(sphere);
-
     }
 
     function drawDoor(){
@@ -322,7 +303,7 @@
 
     function createMesh(geom, imageFile) {
 
-        var texture = THREE.ImageUtils.loadTexture(imageFile);
+        var texture = loadTexture(imageFile);
         var mat = new THREE.MeshPhongMaterial();
          texture.wrapS = THREE.RepeatWrapping;
          texture.wrapT = THREE.RepeatWrapping;
@@ -344,17 +325,28 @@
         return geom;
     }
 
+    function getShelfObj(callback){
+        var shelf =  THREE.Cache.get('shelf');
 
+        if(!shelf){
+            loader.load('2tier/Shelves.obj', function (loadedMesh) {
+                THREE.Cache.add('shelf', loadedMesh);
+                callback(loadedMesh);
+            });
+        } else{
+            callback(shelf);
+        }
+    }
 
     function draw2Tier(position, rotation){
-        loader.load('2tier/Shelves.obj', function (loadedMesh) {
+        getShelfObj(function (loadedMesh) {
             var material = new THREE.MeshLambertMaterial({color: 0x0000FF});
 
             // loadedMesh is a group of meshes. For
             // each mesh set the material, and compute the information
             // three.js needs for rendering.
 
-            var mesh = createMesh(loadedMesh, 'learning-threejs/assets/textures/general/wood-2.jpg');
+            var mesh = createMesh(loadedMesh, 'images/wood.jpg');
             // loadedMesh.children.forEach(function (child) {
             //     child.material = material;
             //     // child.geometry.computeFaceNormals();
@@ -363,10 +355,10 @@
 
 
             mesh.position.set(position.x, position.y, position.z);
-            loadedMesh.rotation.y = Math.PI/2;
+            mesh.rotation.y = Math.PI/2;
             //loadedMesh.rotation.x = Math.PI/2;
             //loadedMesh.rotation.z = Math.PI/2;
-            mesh.scale.set(40, 18, 20);
+            mesh.scale.set(40, 20, 25);
             //loadedMesh.material = material;
             grp1.add(mesh);
             //scene.add(mesh);
@@ -375,7 +367,7 @@
 
     function drawShelf(){
         loader.load('shelf/shelf.obj', function (loadedMesh) {
-            var mesh = createMesh(loadedMesh, 'learning-threejs/assets/textures/general/wood-2.jpg');
+            var mesh = createMesh(loadedMesh, 'images/wood.jpg');
             mesh.position.set(100,-5,-15);
             mesh.rotation.y = -Math.PI/2;
             //loadedMesh.rotation.z = Math.PI/2;
@@ -384,26 +376,6 @@
             scene.add(mesh);
         });
 
-    }
-
-    function drawWindow(){
-        loader.load('Window/Window.obj', function (loadedMesh) {
-            var material = new THREE.MeshLambertMaterial({color: 0xFF0000});
-
-            // loadedMesh is a group of meshes. For
-            // each mesh set the material, and compute the information
-            // three.js needs for rendering.
-            loadedMesh.children.forEach(function (child) {
-                child.material = material;
-               // child.geometry.computeFaceNormals();
-              //  child.geometry.computeVertexNormals();
-            });
-
-            loadedMesh.position.set(20,0,-69);
-            //loadedMesh.scale.set(.8,.8, .8);
-            loadedMesh.material = material;
-            scene.add(loadedMesh);
-        });
     }
 
     function drawSquareShelf(size, position){
@@ -428,6 +400,30 @@
         }
     }
 
+    function loadTexture(imageFile) {
+        //var promise1 = new Promise(function(resolve, reject) {
+            var texture;
+            var loaded = texturesLoaded.filter((entry) => entry.id === imageFile);
+            if (!loaded.length) {
+                texture = new THREE.TextureLoader().load(imageFile);
+                texturesLoaded.push(
+                    {
+                        texture: texture,
+                        id: imageFile
+                    });
+            } else {
+                texture = loaded[0].texture;
+                //texture.needsUpdate = true;
+            }
+            //console.log();
+        //}
+        return texture;
+    }
+
+    function loadObjects(){
+        initScene();
+    }
+
     // once everything is loaded, we run our Three.js stuff.
     function initScene() {
 
@@ -439,6 +435,8 @@
 
         // create a render and set the size
         renderer = new THREE.WebGLRenderer({antialias: true});
+
+        THREE.Cache.enabled = true;
 
         renderer.setClearColor(new THREE.Color(0xEEEEEE));
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -458,35 +456,32 @@
 
         drawDoor();
 
-        //drawWindow();
-
         drawMan();
 
         drawShelf();
 
 
-        drawSquareShelf(4, {x:0,z:180});
-        drawSquareShelf(4, {x:40,z:180});
-        drawSquareShelf(4, {x:80,z:180});
-        drawSquareShelf(4, {x:120,z:180});
-        drawSquareShelf(4, {x:160,z:180});
+        for(var i = 0; i < 151; i+=50){
+            var offset = 0;
+            for(var j = 0; j < 600; j+=250) {
+                drawSquareShelf(4, {x: i+ 100, z: j + 300 + offset});
+                //offset += 200;
+            }
+        }
 
-        drawSquareShelf(4, {x:0,z:180});
-        drawSquareShelf(4, {x:40,z:180});
-        drawSquareShelf(4, {x:80,z:180});
-        drawSquareShelf(4, {x:120,z:180});
-        drawSquareShelf(4, {x:160,z:180});
+        // drawSquareShelf(4, {x:40,z:180});
+        // drawSquareShelf(4, {x:80,z:180});
+        // drawSquareShelf(4, {x:120,z:180});
+        // drawSquareShelf(4, {x:160,z:180});
+        //
+        // drawSquareShelf(4, {x:0,z:180});
+        // drawSquareShelf(4, {x:40,z:180});
+        // drawSquareShelf(4, {x:80,z:180});
+        // drawSquareShelf(4, {x:120,z:180});
+        // drawSquareShelf(4, {x:160,z:180});
 
         //drawRecCircle({x:200,z:200},50);
         scene.add(grp1);
-
-
-
-
-
-
-
-
 
 
         // add the output of the renderer to the html element
@@ -506,6 +501,73 @@
         var gridHelper = new THREE.GridHelper( 400, 15 );
         gridHelper.position.set(0,1,0);
         //scene.add( gridHelper );
+
+
+
+        var extrudeSettings = { amount: 18, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 1, bevelThickness: 1 };
+
+        function addLineShape( shape, color, x, y, z, rx, ry, rz, s ) {
+            // lines
+            shape.autoClose = true;
+            var points = shape.getPoints();
+            var spacedPoints = shape.getSpacedPoints( 50 );
+            var geometryPoints = new THREE.BufferGeometry().setFromPoints( points );
+            var geometrySpacedPoints = new THREE.BufferGeometry().setFromPoints( spacedPoints );
+            // solid line
+            var line = new THREE.Line( geometryPoints, new THREE.LineBasicMaterial( { color: color, linewidth: 3 } ) );
+            line.position.set( x, y, z - 25 );
+            line.rotation.set( rx, ry, rz );
+            line.scale.set( s, s, s );
+            scene.add( line );
+            // // line from equidistance sampled points
+            // var line = new THREE.Line( geometrySpacedPoints, new THREE.LineBasicMaterial( { color: color, linewidth: 3 } ) );
+            // line.position.set( x, y, z + 25 );
+            // line.rotation.set( rx, ry, rz );
+            // line.scale.set( s, s, s );
+            // group.add( line );
+            // // vertices from real points
+            // var particles = new THREE.Points( geometryPoints, new THREE.PointsMaterial( { color: color, size: 4 } ) );
+            // particles.position.set( x, y, z + 75 );
+            // particles.rotation.set( rx, ry, rz );
+            // particles.scale.set( s, s, s );
+            // group.add( particles );
+            // // equidistance sampled points
+            // var particles = new THREE.Points( geometrySpacedPoints, new THREE.PointsMaterial( { color: color, size: 4 } ) );
+            // particles.position.set( x, y, z + 125 );
+            // particles.rotation.set( rx, ry, rz );
+            // particles.scale.set( s, s, s );
+            // group.add( particles );
+        }
+
+
+        function addShape( shape, extrudeSettings, color, x, y, z, rx, ry, rz, s ) {
+            // flat shape with texture
+            // note: default UVs generated by ShapeBufferGeometry are simply the x- and y-coordinates of the vertices
+            // var geometry = new THREE.ShapeBufferGeometry( shape );
+            // var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { side: THREE.DoubleSide, map: texture } ) );
+            // mesh.position.set( x, y, z - 175 );
+            // mesh.rotation.set( rx, ry, rz );
+            // mesh.scale.set( s, s, s );
+            // group.add( mesh );
+            // flat shape
+            var geometry = new THREE.ShapeBufferGeometry( shape );
+            var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: color, side: THREE.DoubleSide , wireframe: false } ) );
+            mesh.position.set( x, y, z - 125 );
+            mesh.rotation.set( rx, ry, rz );
+            mesh.scale.set( s, s, s );
+            //scene.add( mesh );
+            // extruded shape
+            var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+            var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: color , wireframe:false} ) );
+            mesh.position.set( x, y, z - 75 );
+            mesh.rotation.set( rx, ry, rz );
+            mesh.scale.set( s, s, s );
+            objects.push(mesh);
+            scene.add( mesh );
+
+            //addLineShape( shape, color, x, y, z, rx, ry, rz, s );
+        }
+
 
         controls();
         renderScene();
@@ -578,9 +640,6 @@
              man.rotation.x = -phase;
              man.rotation.z = phase;
         }
-       // camera.position.x = 80 * Math.cos(phase/4);
-       // camera.position.z = 80 * Math.sin(phase/4);
-       // camera.lookAt(scene.position);
 
         // render using requestAnimationFrame
         requestAnimationFrame(renderScene);
@@ -594,11 +653,38 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    window.onload = initScene;
+    function onDocumentMouseDown( event ) {
+        event.preventDefault();
+        mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+        raycaster.setFromCamera( mouse, camera );
+        var intersects = raycaster.intersectObjects( objects );
+        console.log(intersects);
+        // if ( intersects.length > 0 ) {
+        //     var intersect = intersects[ 0 ];
+        //     // delete cube
+        //     if ( isShiftDown ) {
+        //         if ( intersect.object != plane ) {
+        //             scene.remove( intersect.object );
+        //             objects.splice( objects.indexOf( intersect.object ), 1 );
+        //         }
+        //         // create cube
+        //     } else {
+        //         var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
+        //         voxel.position.copy( intersect.point ).add( intersect.face.normal );
+        //         voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+        //         scene.add( voxel );
+        //         objects.push( voxel );
+        //     }
+        //     render();
+        // }
+    }
 
     // listen to the resize events
     window.addEventListener('resize', onResize, false);
+    document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 
-</script>
+    window.onload = loadObjects;
+
+    </script>
 </body>
 </html>
