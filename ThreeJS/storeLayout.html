@@ -18,8 +18,8 @@
     var mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
     var man, orbitControls, clock;
     var floorSize = 1000, wallHeight = 150, cameraView = 8000;
-    var texturesLoaded = [], objectsLoaded = [];
-
+    var texturesLoaded = [], objectsLoaded = [], objectsMtlLoaded = [];
+    var tube;
     var grp1 = new THREE.Mesh();
     var objects = [];
 
@@ -31,22 +31,11 @@
     }
 
     function lightControls(){
-        // add spotlight
-        // spotLight = new THREE.SpotLight(0xffffff);
-        // spotLight.position.set(-40, 60, -10);
-        // spotLight.castShadow = true;
-        // spotLight.shadow.camera.near = 2;
-        // spotLight.shadow.camera.far = 200;
-        // spotLight.shadow.camera.fov = 30;
-        // spotLight.target = plane;
-        // spotLight.distance = 100;
-        // spotLight.angle = 0.4;
-
-        var ambientLight = new THREE.AmbientLight(0x888888);
+        var ambientLight = new THREE.AmbientLight(0x444444);
         scene.add(ambientLight);
 
         var pointColor = "#ffffff"; //ccffcc
-        var x = floorSize/2 - 200, y = 80, z = floorSize/2 - 200, intensity = 2, distance = 400;
+        var x = floorSize/2 - 300, y = 80, z = floorSize/2 - 300, intensity = 2, distance = 400;
 
         var spotLight0 = new THREE.SpotLight(0xffffff);
         spotLight0.position.set(0,100,0);
@@ -60,27 +49,27 @@
         pointLight = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight.position.set( x, y, z );
         pointLight.castShadow = true;
-        scene.add( pointLight );
+        scene.add(pointLight);
 
         pointLight2 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight2.position.set( x, y, -z );
         pointLight2.castShadow = true;
-        scene.add( pointLight2 );
+        scene.add(pointLight2);
 
         pointLight3 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight3.position.set( -x, y, z );
         pointLight3.castShadow = true;
-        scene.add( pointLight3 );
+        scene.add(pointLight3);
 
         pointLight4 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight4.position.set( -x, y, -z );
         pointLight4.castShadow = true;
-        scene.add( pointLight4 );
+        scene.add(pointLight4);
 
         pointLight5 = new THREE.PointLight( 0xaabbcc, 5, 250 );
         pointLight5.position.set( 0, 100, 0 );
         pointLight5.castShadow = true;
-        scene.add( pointLight5 );
+        scene.add(pointLight5);
 
 
         // add a small sphere simulating the pointlight
@@ -121,6 +110,25 @@
             var loader = new THREE.OBJLoader();
             loader.load(objPath, function (loadedMesh) {
                 objectsLoaded.push(
+                    {
+                        object : loadedMesh,
+                        id : id
+                    });
+                resolve();
+            });
+        });
+        return promise;
+    }
+
+    function loadObjectMtl(id){
+        return objectsMtlLoaded.filter((entry) => entry.id === id)[0].object;
+    }
+
+    function loadObjectMtlPromise(objPath, mtlPath,  id){
+        var promise = new Promise(function(resolve, reject){
+            var loader = new THREE.OBJMTLLoader();
+            loader.load(objPath, mtlPath, function (loadedMesh) {
+                objectsMtlLoaded.push(
                     {
                         object : loadedMesh,
                         id : id
@@ -173,16 +181,14 @@
         var texture = loadTexture('wall');
         var mat1 = new THREE.MeshPhongMaterial(
                         {
-                            color: 0xeeeeee,
-                            specular: 0x050505,
-                            shininess: 100
+                            color: 0xffffff,
+                            specular: 0x111111,
+                            shininess: 90
                         });
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-
-        // geom.computeVertexNormals();
         mat1.map = texture;
-
+        mat1.map.repeat.set(2,1);
 
         var material = mat1//new THREE.MeshPhongMaterial( {color: 0xffffff} );
         //material.side = THREE.DoubleSide;
@@ -325,6 +331,24 @@
         scene.add(mesh1);
     }
 
+    function drawFruitStand(){
+        var loadedMesh = loadObject('fruitStand');
+        var material = new THREE.MeshLambertMaterial({color: 0xFFFFFF});
+
+        // loadedMesh is a group of meshes. For
+        // each mesh set the material, and compute the information
+        // three.js needs for rendering.
+        loadedMesh.children.forEach(function (child) {
+            child.material = material;
+            scene.add(child);
+        });
+       // man = loadedMesh;
+        loadedMesh.position.set(0,-180,-80);
+        loadedMesh.scale.set(5,4, 5);
+        loadedMesh.material = material;
+        //scene.add(loadedMesh);
+    }
+
     function drawMan(){
         var loadedMesh = loadObject('man');
         var material = new THREE.MeshLambertMaterial({color: 0x00FF00});
@@ -334,14 +358,11 @@
         // three.js needs for rendering.
         loadedMesh.children.forEach(function (child) {
             child.material = material;
-            // child.geometry.computeFaceNormals();
-            //  child.geometry.computeVertexNormals();
         });
         man = loadedMesh;
+        loadedMesh.name="Man";
         loadedMesh.position.set(-0,18,-80);
-       // loadedMesh.rotation.y = Math.PI/2;
         loadedMesh.rotation.x = Math.PI/2;
-        //loadedMesh.rotation.z = Math.PI/2;
         loadedMesh.scale.set(.5,.4, .5);
         loadedMesh.material = material;
         scene.add(loadedMesh);
@@ -350,7 +371,10 @@
     function createMesh(geom, imageFile) {
 
         var texture = loadTexture(imageFile);
-        var mat = new THREE.MeshPhongMaterial();
+        var mat = new THREE.MeshPhongMaterial({
+                    specular: 0x444444,
+                    shininess: 100
+        });
          texture.wrapS = THREE.RepeatWrapping;
          texture.wrapT = THREE.RepeatWrapping;
 
@@ -373,7 +397,7 @@
 
     function draw2Tier(position, rotation){
         var loadedMesh = loadObject('shelf').clone();
-        var material = new THREE.MeshLambertMaterial({color: 0x0000FF});
+        //var material = new THREE.MeshLambertMaterial({color: 0x0000FF});
 
         // loadedMesh is a group of meshes. For
         // each mesh set the material, and compute the information
@@ -432,6 +456,12 @@
         }
     }
 
+    function drawSlantAisle(position, height, width, length){
+        var grp = new THREE.Mesh();
+
+        scene.add(grp);
+    }
+
     function initScene() {
 
         scene = new THREE.Scene();
@@ -469,6 +499,9 @@
 
         drawShelf();
 
+        drawFruitStand();
+
+        drawSlantAisle({x:100, y:0, z :100}, 60, 30, 100);
 
         for(var i = 0; i < 151; i+=50){
             var offset = 0;
@@ -489,7 +522,7 @@
         // drawSquareShelf(4, {x:120,z:180});
         // drawSquareShelf(4, {x:160,z:180});
 
-        //drawRecCircle({x:200,z:200},50);
+        drawRecCircle({x:200,z:200},50);
         scene.add(grp1);
 
 
@@ -607,7 +640,7 @@
         sphereLightMesh.position.y = 8;
 
         if(phase>0) {
-            var xD = 195, yD = 30;
+            var xD = floorSize/2 - 100, yD = 80;
             var position = {
                 z: xD * Math.sin(phase),
                 x: xD * (Math.cos(phase)),
@@ -660,34 +693,50 @@
         event.preventDefault();
         mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
         raycaster.setFromCamera( mouse, camera );
-        var intersects = raycaster.intersectObjects( objects );
-        console.log(intersects);
-        // if ( intersects.length > 0 ) {
-        //     var intersect = intersects[ 0 ];
-        //     // delete cube
-        //     if ( isShiftDown ) {
-        //         if ( intersect.object != plane ) {
-        //             scene.remove( intersect.object );
-        //             objects.splice( objects.indexOf( intersect.object ), 1 );
-        //         }
-        //         // create cube
-        //     } else {
-        //         var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
-        //         voxel.position.copy( intersect.point ).add( intersect.face.normal );
-        //         voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
-        //         scene.add( voxel );
-        //         objects.push( voxel );
-        //     }
-        //     render();
-        // }
+        var intersects = raycaster.intersectObjects( scene.children );
+        for ( var i = 0; i < intersects.length; i++ ) {
+
+            intersects[ i ].object.material.color.set( 0xff0000 );
+
+        }
+
+        renderer.render( scene, camera );
+    }
+
+    function onDocumentMouseMove(event) {
+            var vector = new THREE.Vector3(( event.clientX / window.innerWidth ) * 2 - 1, -( event.clientY / window.innerHeight ) * 2 + 1, 0.5);
+            vector = vector.unproject(camera);
+
+            var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+           // var intersects = raycaster.intersectObjects([sphere, cylinder, cube]);
+
+           // if (intersects.length  0) {
+
+                var points = [];
+                points.push(camera.position);
+                points.push(vector);
+
+                var mat = new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.6});
+                var tubeGeometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 60, 0.001);
+
+                if (tube) scene.remove(tube);
+
+               // if (controls.showRay) {
+               tube = new THREE.Mesh(tubeGeometry, mat);
+               scene.add(tube);
+               //renderScene();
+               // }
+           // }
     }
 
     function loadObjects(){
         Promise.all([
                 loadObjectPromise('2tier/Shelves.obj', 'shelf'),
                 loadObjectPromise('man/stickman.OBJ', 'man'),
+                loadObjectPromise('fruitstand/fruitstand.obj', 'fruitStand'),
                 loadObjectPromise('Door/Door.obj', 'door'),
-                loadTexturePromise('images/wall.jpg', 'wall'),
+                //loadObjectMtlPromise('fruitstand/fruitstand.obj', 'fruitstand/fruitstand.mtl', 'fruitStand'),
+                loadTexturePromise('images/wall1.jpg', 'wall'),
                 loadTexturePromise('images/wood.jpg', 'aisle'),
                 loadTexturePromise('images/floortile.jpg', 'floorTile')])
             .then(
@@ -699,6 +748,7 @@
     // listen to the resize events
     window.addEventListener('resize', onResize, false);
     document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
 
     window.onload = loadObjects;
 
