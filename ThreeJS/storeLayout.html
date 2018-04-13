@@ -15,10 +15,17 @@
     </div>
     <script>
 
+    var scene = new THREE.Scene();
+     //scene.fog = new THREE.Fog(0xffffff, 1, 150);
+     // create a camera, which defines where we're looking at.
+    var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, cameraView);
+     // create a render and set the size
+    var renderer = new THREE.WebGLRenderer({antialias: true});
     var mouse = new THREE.Vector2(), raycaster = new THREE.Raycaster();
     var man, orbitControls, clock;
     var floorSize = 1000, wallHeight = 150, cameraView = 8000;
     var texturesLoaded = [], objectsLoaded = [], objectsMtlLoaded = [];
+    var wallMesh = [];
     var tube;
     var grp1 = new THREE.Mesh();
     var objects = [];
@@ -32,48 +39,56 @@
 
     function lightControls(){
         var ambientLight = new THREE.AmbientLight(0x444444);
+        ambientLight.name = "ambientLight";
         scene.add(ambientLight);
 
         var pointColor = "#ffffff"; //ccffcc
         var x = floorSize/2 - 300, y = 80, z = floorSize/2 - 300, intensity = 2, distance = 400;
 
         var spotLight0 = new THREE.SpotLight(0xffffff);
+
         spotLight0.position.set(0,100,0);
         spotLight0.lookAt({x:0,y:0,z:0});
         spotLight0.distance = 1000;
         spotLight0.angle = 1;
         spotLight0.castShadow = true;
+        spotLight0.name = "spotLight0";
         scene.add(spotLight0);
 
         //point Lights
         pointLight = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight.position.set( x, y, z );
         pointLight.castShadow = true;
+        pointLight.name = "pointLight";
         scene.add(pointLight);
 
         pointLight2 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight2.position.set( x, y, -z );
         pointLight2.castShadow = true;
+        pointLight2.name = "pointLight2";
         scene.add(pointLight2);
 
         pointLight3 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight3.position.set( -x, y, z );
         pointLight3.castShadow = true;
+        pointLight3.name = "pointLight3";
         scene.add(pointLight3);
 
         pointLight4 = new THREE.PointLight( 0xaabbcc, intensity, distance );
         pointLight4.position.set( -x, y, -z );
         pointLight4.castShadow = true;
+        pointLight4.name = "pointLight4";
         scene.add(pointLight4);
 
         pointLight5 = new THREE.PointLight( 0xaabbcc, 5, 250 );
         pointLight5.position.set( 0, 100, 0 );
         pointLight5.castShadow = true;
+        pointLight5.name = "pointLight5";
         scene.add(pointLight5);
 
 
         // add a small sphere simulating the pointlight
-        var sphereLight = new THREE.SphereGeometry(0.2);
+        var sphereLight = new THREE.SphereGeometry(5);
         var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xac6c25});
         sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
         sphereLightMesh.castShadow = true;
@@ -159,9 +174,6 @@
     }
     
     function constructWalls(){
-
-        var wallMesh = [];
-
         // for hiding object in front of camera
         var onBeforeRender = function() {
             var v = new THREE.Vector3();
@@ -195,6 +207,7 @@
 
         // mesh
         mesh = new THREE.Mesh( geometry, material );
+        mesh.name = "wall1";
         mesh.position.set( 0, wallHeight/2, floorSize/2 );
         mesh.rotation.set( 0, 0, 0 );
         mesh.userData.normal = mesh.position.clone().normalize();
@@ -205,7 +218,9 @@
         wallMesh.push(mesh);
 
 
+
        mesh = new THREE.Mesh( geometry, material );
+       mesh.name = "wall2";
        mesh.position.set( 0, wallHeight/2, -floorSize/2 );
        mesh.rotation.set( 0, 0, 0 );
        mesh.userData.normal = mesh.position.clone().normalize();
@@ -215,7 +230,8 @@
        scene.add( mesh );
        wallMesh.push(mesh);
 
-        mesh = new THREE.Mesh( geometry, material );
+       mesh = new THREE.Mesh( geometry, material );
+       mesh.name = "wall3";
        mesh.position.set( floorSize/2, wallHeight/2, 0 );
        mesh.rotation.set( 0, - Math.PI / 2, 0 );
        mesh.userData.normal = mesh.position.clone().normalize();
@@ -227,6 +243,7 @@
 
        // mesh
        mesh = new THREE.Mesh( geometry, material );
+       mesh.name = "wall3";
        mesh.position.set( - floorSize/2, wallHeight/2, 0 );
        mesh.rotation.set( 0, Math.PI / 2, 0 );
        mesh.userData.normal = mesh.position.clone().normalize();
@@ -251,9 +268,11 @@
        mat.map.repeat.set(4,4);
        // mesh - floor
        floorMesh = new THREE.Mesh( geometry, mat );
+       floorMesh.name = "floor";
        floorMesh.position.set( 0, 0, 0 );floorMesh.rotation.set( - Math.PI / 2, 0, 0 );
        floorMesh.userData.normal = floorMesh.position.clone().normalize();
        floorMesh.receiveShadow = true;
+        wallMesh.push(floorMesh);
        // mesh.onBeforeRender = onBeforeRender;
        // mesh.onAfterRender = onAfterRender;
        scene.add( floorMesh );
@@ -288,11 +307,12 @@
 
         // add the cube to the scene
         scene.add(cube);
+        objects.push(cube);
 
         var sphereGeometry = new THREE.SphereGeometry(4, 20, 20);
         var sphereMaterial = new THREE.MeshPhongMaterial({color: 0x7777ff});
         sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-
+        objects.push(sphere);
         // position the sphere
         sphere.position.x = 15;
         sphere.position.y = 4;
@@ -366,21 +386,22 @@
         loadedMesh.scale.set(.5,.4, .5);
         loadedMesh.material = material;
         scene.add(loadedMesh);
+        objects.push(loadedMesh);
     }
 
     function createMesh(geom, imageFile) {
 
         var texture = loadTexture(imageFile);
         var mat = new THREE.MeshPhongMaterial({
-                    specular: 0x444444,
-                    shininess: 100
+                    // specular: 0x444444,
+                    // shininess: 100
         });
          texture.wrapS = THREE.RepeatWrapping;
          texture.wrapT = THREE.RepeatWrapping;
 
 
        // geom.computeVertexNormals();
-        mat.map = texture;
+        //mat.map = texture;
         //mat.map.repeat.set(5,5);
 
         geom.children.forEach(function (child) {
@@ -418,6 +439,7 @@
         mesh.scale.set(40, 20, 25);
         //loadedMesh.material = material;
         grp1.add(mesh);
+        objects.push(grp1);
         //scene.add(mesh);
 
     }
@@ -463,16 +485,6 @@
     }
 
     function initScene() {
-
-        scene = new THREE.Scene();
-        //scene.fog = new THREE.Fog(0xffffff, 1, 150);
-
-        // create a camera, which defines where we're looking at.
-        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, cameraView);
-
-        // create a render and set the size
-        renderer = new THREE.WebGLRenderer({antialias: true});
-
         THREE.Cache.enabled = true;
 
         renderer.setClearColor(new THREE.Color(0xEEEEEE));
@@ -484,6 +496,8 @@
         orbitalControls();
 
         constructWalls();
+
+        //objects.push(...wallMesh);
 
         cameraControls();
 
@@ -522,7 +536,7 @@
         // drawSquareShelf(4, {x:120,z:180});
         // drawSquareShelf(4, {x:160,z:180});
 
-        drawRecCircle({x:200,z:200},50);
+        //drawRecCircle({x:200,z:200},50);
         scene.add(grp1);
 
 
@@ -635,9 +649,9 @@
         sphere.position.y = 2 + (40 * Math.abs(Math.sin(step)));
 
         phase += (controls.lightRotSpeed > 0 ?.04: 0) + controls.lightRotSpeed;
-        sphereLightMesh.position.z = 13 * (Math.sin(phase));
-        sphereLightMesh.position.x = 13 * (Math.cos(phase));
-        sphereLightMesh.position.y = 8;
+        // sphereLightMesh.position.z = 13 * (Math.sin(phase));
+        // sphereLightMesh.position.x = 13 * (Math.cos(phase));
+        // sphereLightMesh.position.y = 8;
 
         if(phase>0) {
             var xD = floorSize/2 - 100, yD = 80;
@@ -693,40 +707,22 @@
         event.preventDefault();
         mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
         raycaster.setFromCamera( mouse, camera );
-        var intersects = raycaster.intersectObjects( scene.children );
-        for ( var i = 0; i < intersects.length; i++ ) {
-
-            intersects[ i ].object.material.color.set( 0xff0000 );
-
+        var intersects = raycaster.intersectObjects( objects, true );
+        for ( var i = 0; i < 1; i++ ) {
+            intersects[ i ].object.material.color.set( 0x00FF00 );
         }
-
         renderer.render( scene, camera );
     }
 
     function onDocumentMouseMove(event) {
-            var vector = new THREE.Vector3(( event.clientX / window.innerWidth ) * 2 - 1, -( event.clientY / window.innerHeight ) * 2 + 1, 0.5);
-            vector = vector.unproject(camera);
-
-            var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-           // var intersects = raycaster.intersectObjects([sphere, cylinder, cube]);
-
-           // if (intersects.length  0) {
-
-                var points = [];
-                points.push(camera.position);
-                points.push(vector);
-
-                var mat = new THREE.MeshBasicMaterial({color: 0xff0000, transparent: true, opacity: 0.6});
-                var tubeGeometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 60, 0.001);
-
-                if (tube) scene.remove(tube);
-
-               // if (controls.showRay) {
-               tube = new THREE.Mesh(tubeGeometry, mat);
-               scene.add(tube);
-               //renderScene();
-               // }
-           // }
+        mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+        raycaster.setFromCamera( mouse, camera );
+        var intersects = raycaster.intersectObjects(objects, true);
+        if (intersects.length > 0){
+            sphereLightMesh.position.copy(intersects[0].point);
+            //console.log(intersects[0].point, intersects[0]);
+            renderer.render(scene, camera);
+        }
     }
 
     function loadObjects(){
