@@ -25,9 +25,9 @@
     var man, orbitControls, clock;
     var floorSize = 1000, wallHeight = 150, cameraView = 8000;
     var texturesLoaded = [], objectsLoaded = [], objectsMtlLoaded = [];
-    var wallMesh = [];
-    var tube;
+    var wallMesh = [], spheres = [];
     var grp1 = new THREE.Mesh();
+    var spheresIndex = 0;
     var objects = [];
 
     function orbitalControls(){
@@ -88,13 +88,21 @@
 
 
         // add a small sphere simulating the pointlight
-        var sphereLight = new THREE.SphereGeometry(5);
-        var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xac6c25});
-        sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
-        sphereLightMesh.castShadow = true;
+        // var sphereLight = new THREE.SphereGeometry(5);
+        // var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xac6c25});
+        // sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
+        // //sphereLightMesh.castShadow = true;
+        //
+        // sphereLightMesh.position = new THREE.Vector3(3, 0, 3);
+        // scene.add(sphereLightMesh);
 
-        sphereLightMesh.position = new THREE.Vector3(3, 0, 3);
-        scene.add(sphereLightMesh);
+        var sphereGeometry = new THREE.SphereGeometry( 8, 32, 32 );
+        var sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+        for ( var i = 0; i < 40; i++ ) {
+            var sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+            scene.add( sphere );
+            spheres.push( sphere );
+        }
     }
 
     function cameraControls(){
@@ -444,44 +452,58 @@
 
     }
 
-    function drawShelf(){
-        var loadedMesh = loadObject('shelf');
-        var mesh = createMesh(loadedMesh, 'aisle');
-        mesh.position.set(100,-5,-15);
-        mesh.rotation.y = -Math.PI/2;
-        //loadedMesh.rotation.z = Math.PI/2;
-        mesh.scale.set(2.5,.8,4);
-        //loadedMesh.material = material;
-        scene.add(mesh);
-
-    }
-
-    function drawSquareShelf(size, position){
-        var lengthOffsetFrmCenter = 15;
-        var widthOfsetFrmCenter = 8;
-        for(var z = 0; z < size; z++){
-            draw2Tier({x:-floorSize/2 + widthOfsetFrmCenter + position.x, y:15, z: 25*z - floorSize/2 + lengthOffsetFrmCenter + position.z});
-            draw2Tier({x:-floorSize/2 + widthOfsetFrmCenter + position.x, y:33, z: 25*z - floorSize/2 + lengthOffsetFrmCenter + position.z});
-        }
-    }
-
-    function drawRecCircle(position, radius){
-        var lengthOffsetFrmCenter = 15;
-        var widthOfsetFrmCenter = 8;
-        var phase = 0;
-        for(; phase < 2*Math.PI; phase+= Math.PI/2){
-            draw2Tier({ x: -floorSize/2 + position.x + radius*Math.sin(phase),
-                        y:15,
-                        z: -floorSize/2 + position.z + radius*Math.cos(phase)});
-
-            console.log(-floorSize/2 + position.x + radius*Math.sin(phase), -floorSize/2 + position.z + radius*Math.cos(phase))
-        }
-    }
-
     function drawSlantAisle(position, height, width, length){
         var grp = new THREE.Mesh();
 
         scene.add(grp);
+    }
+
+    function drawAisle(position, dimension){
+        var group = new THREE.Mesh();
+        var topGeometry = new THREE.BoxGeometry( dimension.l, dimension.w, 5 );
+        //var texture = loadTexture('wall');
+        var material = new THREE.MeshPhongMaterial(
+            {
+                color: 0xECF0F1,
+                specular: 0x111111,
+                shininess: 90
+            });
+        material.side = THREE.DoubleSide;
+
+        // top wall
+        mesh = new THREE.Mesh( topGeometry, material );
+        mesh.name = "aisleTop";
+
+        mesh.rotation.set(Math.PI/2,0,Math.PI/2);
+        mesh.position.set( position.x + dimension.w/2, dimension.h, position.z + dimension.l/2);
+        group.add(mesh);
+
+        //side wall
+        sideGeometry = new THREE.BoxGeometry( dimension.h, dimension.w, 5 );
+        mesh = new THREE.Mesh( sideGeometry, material );
+        mesh.rotation.set(0,0,Math.PI/2);
+        mesh.position.set( position.x + dimension.w/2, dimension.h/2, position.z);
+        group.add(mesh);
+
+        mesh = new THREE.Mesh( sideGeometry, material );
+        mesh.rotation.set(0,0,Math.PI/2);
+        mesh.position.set( position.x + dimension.w/2, dimension.h/2, position.z + dimension.l);
+        group.add(mesh);
+
+        //shelfs
+        var shelfOffset = 0;
+        while(shelfOffset < dimension.h){
+            mesh = new THREE.Mesh( topGeometry, material );
+            mesh.rotation.set(Math.PI/2,0,Math.PI/2);
+            mesh.position.set( position.x + dimension.w/2, shelfOffset, position.z + dimension.l/2);
+            group.add(mesh);
+            shelfOffset += dimension.h/3;
+        }
+
+        //group.scale.set(2,2,2);
+        scene.add( group );
+        objects.push(group);
+        //wallMesh.push(mesh);
     }
 
     function initScene() {
@@ -507,38 +529,23 @@
 
         gridHelper();
 
-        drawDoor();
+        //drawDoor();
 
         drawMan();
 
-        drawShelf();
+        drawAisle({x:-500, y:0, z : -500}, {h :102, w :60, l: 1000});
 
-        drawFruitStand();
+        drawAisle({x: 440, y:0, z : -500}, {h :102, w :60, l: 1000});
+
+        drawAisle({x: -300, y:0, z : 180}, {h :102, w :60, l: 200});
+
+        drawAisle({x: 300, y:0, z : -50}, {h :90, w :60, l: 200});
+
+        drawAisle({x: -300, y:0, z : -100}, {h :102, w :60, l: 200});
 
         drawSlantAisle({x:100, y:0, z :100}, 60, 30, 100);
 
-        for(var i = 0; i < 151; i+=50){
-            var offset = 0;
-            for(var j = 0; j < 600; j+=250) {
-                drawSquareShelf(4, {x: i+ 100, z: j + 300 + offset});
-                //offset += 200;
-            }
-        }
-
-        // drawSquareShelf(4, {x:40,z:180});
-        // drawSquareShelf(4, {x:80,z:180});
-        // drawSquareShelf(4, {x:120,z:180});
-        // drawSquareShelf(4, {x:160,z:180});
-        //
-        // drawSquareShelf(4, {x:0,z:180});
-        // drawSquareShelf(4, {x:40,z:180});
-        // drawSquareShelf(4, {x:80,z:180});
-        // drawSquareShelf(4, {x:120,z:180});
-        // drawSquareShelf(4, {x:160,z:180});
-
-        //drawRecCircle({x:200,z:200},50);
         scene.add(grp1);
-
 
         // add the output of the renderer to the html element
         document.getElementById("my-webgl").appendChild(renderer.domElement);
@@ -708,32 +715,47 @@
         mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
         raycaster.setFromCamera( mouse, camera );
         var intersects = raycaster.intersectObjects( objects, true );
-        for ( var i = 0; i < 1; i++ ) {
-            intersects[ i ].object.material.color.set( 0x00FF00 );
+        if(intersects.length > 0){
+            intersects[0].object.material.color.set( 0xEB984E );
         }
         renderer.render( scene, camera );
     }
 
+    var clockDelta = 0;
     function onDocumentMouseMove(event) {
+        camera.updateMatrixWorld();
         mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
-        raycaster.setFromCamera( mouse, camera );
-        var intersects = raycaster.intersectObjects(objects, true);
-        if (intersects.length > 0){
-            sphereLightMesh.position.copy(intersects[0].point);
-            //console.log(intersects[0].point, intersects[0]);
-            renderer.render(scene, camera);
+        if(clockDelta > -1) {
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(objects, true);
+            if (intersects.length > 0) {
+                spheres[ spheresIndex ].position.copy( intersects[0].point );
+                spheres[ spheresIndex ].scale.set( 1, 1, 1 );
+                spheresIndex = ( spheresIndex + 1 ) % spheres.length;
+                //sphereLightMesh.position.copy(intersects[0].point);
+                //console.log(intersects[0].point, intersects[0]);
+                //renderer.render(scene, camera);
+            }
+            for ( var i = 0; i < spheres.length; i++ ) {
+                var sphere = spheres[ i ];
+                sphere.scale.multiplyScalar( 0.95 );
+                sphere.scale.clampScalar( 0.01, 1 );
+            }
+
+            clockDelta = 0;
         }
+        clockDelta += clock.getDelta();
     }
 
     function loadObjects(){
         Promise.all([
-                loadObjectPromise('2tier/Shelves.obj', 'shelf'),
+                //loadObjectPromise('2tier/Shelves.obj', 'shelf'),
                 loadObjectPromise('man/stickman.OBJ', 'man'),
-                loadObjectPromise('fruitstand/fruitstand.obj', 'fruitStand'),
-                loadObjectPromise('Door/Door.obj', 'door'),
+               // loadObjectPromise('fruitstand/fruitstand.obj', 'fruitStand'),
+               // loadObjectPromise('Door/Door.obj', 'door'),
                 //loadObjectMtlPromise('fruitstand/fruitstand.obj', 'fruitstand/fruitstand.mtl', 'fruitStand'),
                 loadTexturePromise('images/wall1.jpg', 'wall'),
-                loadTexturePromise('images/wood.jpg', 'aisle'),
+               // loadTexturePromise('images/wood.jpg', 'aisle'),
                 loadTexturePromise('images/floortile.jpg', 'floorTile')])
             .then(
                 ()=> {
