@@ -452,10 +452,37 @@
 
     }
 
-    function drawSlantAisle(position, height, width, length){
+    function drawSlantAisle(position, dimension){
         var grp = new THREE.Mesh();
 
+        var topGeometry = new THREE.BoxGeometry( dimension.l, dimension.w, 50 );
+        //var texture = loadTexture('wall');
+        var material = new THREE.MeshPhongMaterial(
+            {
+                color: 0xECF0F1,
+                specular: 0x111111,
+                shininess: 90
+            });
+        material.side = THREE.DoubleSide;
+        var mesh = new THREE.Mesh( topGeometry, material );
+        mesh.rotation.set(Math.PI/2,0,0);
+        mesh.position.set(position.x , position.y, position.z + dimension.w/2);
+        grp.add(mesh);
+
+        var topGeometry = new THREE.BoxGeometry( dimension.l, dimension.w + 15, 5 );
+        mesh = new THREE.Mesh( topGeometry, material );
+        mesh.rotation.set(-Math.PI/3,0,0);
+        mesh.position.set(position.x , position.y + dimension.w/2.828, position.z + dimension.w/2);
+        grp.add(mesh);
+
+        var topGeometry = new THREE.BoxGeometry( dimension.l, dimension.w/2 + 18, 5 );
+        mesh = new THREE.Mesh( topGeometry, material );
+        mesh.rotation.set(0,0,0);
+        mesh.position.set(position.x , position.y + dimension.w/3, position.z + 3 );
+        grp.add(mesh);
+
         scene.add(grp);
+
     }
 
     function drawAisle(position, dimension){
@@ -541,9 +568,9 @@
 
         drawAisle({x: 300, y:0, z : -50}, {h :90, w :60, l: 200});
 
-        drawAisle({x: -300, y:0, z : -100}, {h :102, w :60, l: 200});
+        drawAisle({x: -300, y:0, z: -100}, {h :102, w :60, l: 200});
 
-        drawSlantAisle({x:100, y:0, z :100}, 60, 30, 100);
+        drawSlantAisle({x:0, y:0, z:-400}, {h :102, w :160, l: 300});
 
         scene.add(grp1);
 
